@@ -1,0 +1,171 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f5f7fb;
+  color: #111827;
+}
+
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 240px;
+  min-height: 100vh;
+  background: #111827;
+  color: white;
+  padding: 30px 20px;
+}
+
+.sidebar h2 {
+  margin: 0 0 40px;
+  font-size: 24px;
+}
+
+.sidebar nav p {
+  padding: 14px;
+  margin: 8px 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.sidebar nav p:hover {
+  background: #374151;
+}
+
+.main {
+  flex: 1;
+  padding: 35px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 32px;
+}
+
+header button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.card {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.card h3 {
+  color: #6b7280;
+  margin: 0 0 12px;
+}
+
+.card h2 {
+  margin: 0;
+  font-size: 30px;
+}
+
+.recent {
+  margin-top: 35px;
+}
+
+.recent > h2 {
+  margin-bottom: 15px;
+}
+
+.post {
+  background: white;
+  padding: 20px;
+  margin-top: 15px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.post p {
+  margin: 8px 0 0;
+  color: #6b7280;
+}
+
+.post span {
+  background: #dbeafe;
+  color: #2563eb;
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+.create-post {
+  background: white;
+  padding: 30px;
+  border-radius: 15px;
+  max-width: 700px;
+  margin-top: 30px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.create-post h1 {
+  margin-bottom: 25px;
+}
+
+.create-post form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.create-post label {
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+.create-post input,
+.create-post select,
+.create-post textarea {
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.create-post textarea {
+  resize: vertical;
+}
+
+.create-post button {
+  margin-top: 20px;
+  padding: 13px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.create-post button:hover {
+  background: #1d4ed8;
+}
