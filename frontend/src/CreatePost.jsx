@@ -1,9 +1,9 @@
 import { useState } from "react";
 
-function CreatePost() {
+function CreatePost({ initialDate = "", onSchedule }) {
   const [caption, setCaption] = useState("");
   const [platform, setPlatform] = useState("Instagram");
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState("");
 
   const handleSubmit = (e) => {
@@ -16,7 +16,7 @@ function CreatePost() {
 
     alert("Post scheduled successfully!");
 
-    console.log({
+    onSchedule({
       platform,
       caption,
       date,
