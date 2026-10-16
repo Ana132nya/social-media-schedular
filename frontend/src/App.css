@@ -437,6 +437,17 @@ header button {
   color: #15803d;
 }
 
+.status.due,
+.status.failed {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status.cancelled {
+  background: #e5e7eb;
+  color: #374151;
+}
+
 .day-panel-empty {
   font-size: 14px;
   color: #6b7280;
@@ -507,8 +518,17 @@ header button {
   border: 0;
   background: transparent;
   color: inherit;
-  font-size: 20px;
+  font: inherit;
   cursor: pointer;
+}
+
+.notice button[aria-label="Dismiss notice"] {
+  font-size: 20px;
+}
+
+.notice button:not([aria-label]) {
+  flex-shrink: 0;
+  text-decoration: underline;
 }
 
 .loading-state,
@@ -707,4 +727,66 @@ header button {
   .managed-post-meta {
     flex-wrap: wrap;
   }
+}
+
+.auth-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background: #f5f7fb;
+}
+
+.auth-form {
+  display: flex;
+  width: min(100%, 400px);
+  flex-direction: column;
+  gap: 12px;
+  padding: 32px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+}
+
+.auth-form h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.auth-form > p {
+  margin-bottom: 8px;
+  color: #6b7280;
+}
+
+.auth-form label {
+  font-weight: 600;
+}
+
+.auth-form input {
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font: inherit;
+}
+
+.auth-form button,
+.logout-button {
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 4px;
+  background: #2563eb;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+}
+
+.auth-form button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.logout-button {
+  width: 100%;
+  margin-top: 12px;
+  background: #374151;
 }

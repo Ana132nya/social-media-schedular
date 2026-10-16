@@ -15,9 +15,15 @@ export function toDateKey(date) {
 }
 
 export function getPostStatus(post) {
-  const publishAt = new Date(`${post.date}T${post.time}`);
+  if (post.status && post.status !== "Scheduled") return post.status;
 
-  return publishAt <= new Date() ? "Published" : "Scheduled";
+  const timezoneOffsetMinutes = Number.isInteger(post.timezoneOffsetMinutes)
+    ? post.timezoneOffsetMinutes
+    : new Date(`${post.date}T${post.time}`).getTimezoneOffset();
+  const publishAt = Date.parse(`${post.date}T${post.time}:00.000Z`)
+    + timezoneOffsetMinutes * 60_000;
+
+  return publishAt <= Date.now() ? "Due" : "Scheduled";
 }
 
 function daysFromToday(offset) {

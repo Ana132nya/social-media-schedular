@@ -2,6 +2,13 @@ const mongoose = require("mongoose");
 
 const postSchema = new mongoose.Schema(
   {
+    clientId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      maxlength: 100,
+    },
+
     platform: {
       type: String,
       enum: ["Instagram", "Facebook", "LinkedIn", "Twitter / X"],
@@ -27,6 +34,12 @@ const postSchema = new mongoose.Schema(
     time: {
       type: String,
       required: true,
+    },
+
+    timezoneOffsetMinutes: {
+      type: Number,
+      min: -840,
+      max: 840,
     },
 
     status: {

@@ -24,7 +24,14 @@ function CreatePost({ initialDate = "", onSchedule }) {
     }
 
     setError("");
-    await onSchedule({ platform, caption: caption.trim(), image: image.trim(), date, time });
+    await onSchedule({
+      platform,
+      caption: caption.trim(),
+      image: image.trim(),
+      date,
+      time,
+      timezoneOffsetMinutes: new Date(`${date}T${time}`).getTimezoneOffset(),
+    });
   };
 
   return (

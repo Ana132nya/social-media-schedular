@@ -2,7 +2,18 @@ import { useEffect, useState } from "react";
 import "./App.css";
 import Calendar from "./Calendar";
 import CreatePost from "./CreatePost";
-import { createPost, deletePost, getLocalPosts, getPosts, saveLocalPosts } from "./api";
+import {
+  createPost,
+  deletePost,
+  getOfflineState,
+  getSession,
+  hasSessionHint,
+  login as loginApi,
+  logout as logoutApi,
+  saveOfflineState,
+  setSessionHint,
+  synchronizeOfflinePosts,
+} from "./api";
 import { getPostStatus, PLATFORM_COLORS } from "./posts";
 
 function formatPostDate(post) {
@@ -16,7 +27,7 @@ function formatPostDate(post) {
 
 function Dashboard({ posts, onCreatePost, onViewPosts }) {
   const scheduled = posts.filter((post) => getPostStatus(post) === "Scheduled").length;
-  const published = posts.length - scheduled;
+  const published = posts.filter((post) => getPostStatus(post) === "Published").length;
   const recentPosts = [...posts]
     .sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`))
     .slice(0, 5);
@@ -86,7 +97,10 @@ function Posts({ posts, onDelete }) {
           <select value={filter} onChange={(event) => setFilter(event.target.value)}>
             <option>All posts</option>
             <option>Scheduled</option>
+            <option>Due</option>
             <option>Published</option>
+            <option>Failed</option>
+            <option>Cancelled</option>
           </select>
         </label>
       </header>
@@ -116,10 +130,45 @@ function Posts({ posts, onDelete }) {
   );
 }
 
+function Login({ error, onLogin }) {
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (event) => {
+    event.preventDefault();
+    setBusy(true);
+    const signedIn = await onLogin(password);
+    setBusy(false);
+    if (signedIn) setPassword("");
+  };
+
+  return (
+    <main className="auth-shell">
+      <form className="auth-form" onSubmit={submit}>
+        <h1>SocialFlow</h1>
+        <p>Sign in to manage your social schedule.</p>
+        <label htmlFor="app-password">Password</label>
+        <input
+          id="app-password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          required
+        />
+        {error && <p className="form-error" role="alert">{error}</p>}
+        <button type="submit" disabled={busy}>{busy ? "Signing in..." : "Sign in"}</button>
+      </form>
+    </main>
+  );
+}
+
 function App() {
   const [view, setView] = useState("dashboard");
   const [posts, setPosts] = useState([]);
   const [storageMode, setStorageMode] = useState("loading");
+  const [authStatus, setAuthStatus] = useState("checking");
+  const [loginError, setLoginError] = useState("");
   const [notice, setNotice] = useState("");
   // Date ("YYYY-MM-DD") to open the next view on: prefills Create Post's
   // date, or picks the month and day the Calendar starts on.
@@ -131,45 +180,179 @@ function App() {
   };
 
   useEffect(() => {
-    getPosts()
-      .then((savedPosts) => {
-        setPosts(savedPosts);
-        saveLocalPosts(savedPosts);
-        setStorageMode("server");
+    let active = true;
+
+    const acceptServerState = async () => {
+      const result = await synchronizeOfflinePosts();
+      if (!active) return;
+      setPosts(result.posts);
+      setStorageMode(result.pendingCount ? "local" : "server");
+      setNotice(result.pendingCount
+        ? "Some offline changes are still waiting to sync."
+        : "");
+    };
+
+    getSession()
+      .then(() => {
+        setSessionHint(true);
+        setAuthStatus("authenticated");
+        return acceptServerState();
       })
-      .catch(() => {
-        setPosts(getLocalPosts());
-        setStorageMode("local");
-        setNotice("Backend unavailable. Posts are being saved in this browser only.");
+      .catch((error) => {
+        if (!active) return;
+
+        if (error.status === 401) {
+          setSessionHint(false);
+          setAuthStatus("signed-out");
+          return;
+        }
+
+        if (hasSessionHint()) {
+          const offlineState = getOfflineState();
+          setAuthStatus("authenticated");
+          setPosts(offlineState.posts);
+          setStorageMode("local");
+          setNotice("Backend unavailable. Offline changes will sync when you reconnect.");
+          return;
+        }
+
+        setAuthStatus("signed-out");
+        setLoginError("Backend unavailable. Start the backend before signing in.");
       });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
+  useEffect(() => {
+    if (authStatus !== "authenticated") return undefined;
+
+    const handleOnline = async () => {
+      try {
+        await getSession();
+        const result = await synchronizeOfflinePosts();
+        setPosts(result.posts);
+        setStorageMode(result.pendingCount ? "local" : "server");
+        setNotice(result.pendingCount
+          ? "Some offline changes are still waiting to sync."
+          : "");
+      } catch (error) {
+        if (error.status === 401) {
+          setSessionHint(false);
+          setAuthStatus("signed-out");
+          setLoginError("Your session expired. Sign in again to sync changes.");
+        }
+      }
+    };
+
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [authStatus]);
+
+  const handleLogin = async (password) => {
+    setLoginError("");
+    try {
+      await loginApi(password);
+      setSessionHint(true);
+      setAuthStatus("authenticated");
+    } catch (error) {
+      setLoginError(error.message);
+      return false;
+    }
+
+    try {
+      const result = await synchronizeOfflinePosts();
+      setPosts(result.posts);
+      setStorageMode(result.pendingCount ? "local" : "server");
+      setNotice(result.pendingCount ? "Some offline changes are still waiting to sync." : "");
+    } catch (error) {
+      if (error.status === 401) {
+        setSessionHint(false);
+        setAuthStatus("signed-out");
+        setLoginError("Sign in again to sync your offline changes.");
+        return true;
+      }
+      const offlineState = getOfflineState();
+      setPosts(offlineState.posts);
+      setStorageMode("local");
+      setNotice("Backend unavailable. Offline changes will sync when you reconnect.");
+    }
+    return true;
+  };
+
+  const retrySync = async () => {
+    try {
+      await getSession();
+      const result = await synchronizeOfflinePosts();
+      setPosts(result.posts);
+      setStorageMode(result.pendingCount ? "local" : "server");
+      setNotice(result.pendingCount
+        ? "Some offline changes are still waiting to sync."
+        : "All changes are synced.");
+    } catch (error) {
+      if (error.status === 401) {
+        setSessionHint(false);
+        setAuthStatus("signed-out");
+        setLoginError("Your session expired. Sign in again to sync changes.");
+        return;
+      }
+      setNotice("Could not sync changes. They remain saved in this browser.");
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logoutApi();
+    } catch {
+      // Clearing the local session hint still signs out this browser offline.
+    }
+    setSessionHint(false);
+    setAuthStatus("signed-out");
+    setPosts([]);
+    setStorageMode("loading");
+  };
+
+  const queueLocalPost = (post) => {
+    const localPost = {
+      ...post,
+      clientId: post.clientId || crypto.randomUUID(),
+      id: `local-${crypto.randomUUID()}`,
+    };
+    const offlineState = getOfflineState();
+    const updatedPosts = [...posts, localPost];
+    saveOfflineState(updatedPosts, offlineState.pendingDeleteIds);
+    setPosts(updatedPosts);
+    setStorageMode("local");
+    return localPost;
+  };
+
   const handleSchedule = async (post) => {
+    post = { ...post, clientId: crypto.randomUUID() };
     if (storageMode === "server") {
       try {
         const savedPost = await createPost(post);
-        setPosts((current) => {
-          const updatedPosts = [...current, savedPost];
-          saveLocalPosts(updatedPosts);
-          return updatedPosts;
-        });
-      } catch {
-        const localPost = { ...post, id: crypto.randomUUID() };
-        setPosts((current) => {
-          const updatedPosts = [...current, localPost];
-          saveLocalPosts(updatedPosts);
-          return updatedPosts;
-        });
-        setStorageMode("local");
-        setNotice("Could not reach the backend. This post was saved in this browser only.");
+        const updatedPosts = [...posts, savedPost];
+        const offlineState = getOfflineState();
+        saveOfflineState(updatedPosts, offlineState.pendingDeleteIds);
+        setPosts(updatedPosts);
+      } catch (error) {
+        if (error.status === 401) {
+          setSessionHint(false);
+          setAuthStatus("signed-out");
+          setLoginError("Your session expired. Sign in again to schedule posts.");
+          return;
+        }
+        if (error.status && error.status < 500) {
+          setNotice(error.message);
+          return;
+        }
+        queueLocalPost(post);
+        setNotice("Backend unavailable. This post is saved locally and will sync when reconnected.");
       }
     } else {
-      const localPost = { ...post, id: crypto.randomUUID() };
-      setPosts((current) => {
-        const updatedPosts = [...current, localPost];
-        saveLocalPosts(updatedPosts);
-        return updatedPosts;
-      });
+      queueLocalPost(post);
+      setNotice("This post is saved locally and will sync when reconnected.");
     }
     showView("calendar", post.date);
   };
@@ -177,27 +360,55 @@ function App() {
   const handleDelete = async (post) => {
     if (!window.confirm("Delete this post? This cannot be undone.")) return;
 
+    const offlineState = getOfflineState();
+    const isLocalPost = !/^[a-f\d]{24}$/i.test(String(post.id));
     if (storageMode === "server") {
       try {
         await deletePost(post.id);
-      } catch {
-        setNotice("Could not delete the post because the backend is unavailable.");
+      } catch (error) {
+        if (error.status === 401) {
+          setSessionHint(false);
+          setAuthStatus("signed-out");
+          setLoginError("Your session expired. Sign in again to delete posts.");
+          return;
+        }
+        if (error.status && error.status < 500 && error.status !== 404) {
+          setNotice(error.message);
+          return;
+        }
+
+        const updatedPosts = posts.filter((item) => item.id !== post.id);
+        const pendingDeleteIds = error.status === 404 || isLocalPost
+          ? offlineState.pendingDeleteIds
+          : [...new Set([...offlineState.pendingDeleteIds, post.id])];
+        saveOfflineState(updatedPosts, pendingDeleteIds);
+        setPosts(updatedPosts);
+        setStorageMode("local");
+        setNotice("Delete saved locally and will sync when reconnected.");
         return;
       }
-      setPosts((current) => {
-        const updatedPosts = current.filter((item) => item.id !== post.id);
-        saveLocalPosts(updatedPosts);
-        return updatedPosts;
-      });
+
+      const updatedPosts = posts.filter((item) => item.id !== post.id);
+      saveOfflineState(updatedPosts, offlineState.pendingDeleteIds);
+      setPosts(updatedPosts);
       return;
     }
 
-    setPosts((current) => {
-      const updatedPosts = current.filter((item) => item.id !== post.id);
-      saveLocalPosts(updatedPosts);
-      return updatedPosts;
-    });
+    const updatedPosts = posts.filter((item) => item.id !== post.id);
+    const pendingDeleteIds = isLocalPost
+      ? offlineState.pendingDeleteIds
+      : [...new Set([...offlineState.pendingDeleteIds, post.id])];
+    saveOfflineState(updatedPosts, pendingDeleteIds);
+    setPosts(updatedPosts);
   };
+
+  if (authStatus === "checking") {
+    return <main className="auth-shell"><p>Checking session...</p></main>;
+  }
+
+  if (authStatus !== "authenticated") {
+    return <Login error={loginError} onLogin={handleLogin} />;
+  }
 
   const navClass = (navView) => (view === navView ? "active" : undefined);
 
@@ -226,10 +437,17 @@ function App() {
         <p className={`connection-state ${storageMode}`}>
           <span /> {storageMode === "server" ? "Connected to database" : storageMode === "loading" ? "Connecting..." : "Browser storage"}
         </p>
+        <button className="logout-button" onClick={handleLogout}>Sign out</button>
       </aside>
 
       <main className="main">
-        {notice && <div className="notice" role="status">{notice}<button onClick={() => setNotice("")} aria-label="Dismiss notice">×</button></div>}
+        {notice && (
+          <div className="notice" role="status">
+            <span>{notice}</span>
+            <button onClick={retrySync}>Retry sync</button>
+            <button onClick={() => setNotice("")} aria-label="Dismiss notice">×</button>
+          </div>
+        )}
         {storageMode === "loading" ? <p className="loading-state">Loading your posts...</p> : null}
         {view === "dashboard" && (
           <Dashboard posts={posts} onCreatePost={() => showView("create")} onViewPosts={() => showView("posts")} />
