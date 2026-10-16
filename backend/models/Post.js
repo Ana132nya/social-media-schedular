@@ -4,7 +4,7 @@ const postSchema = new mongoose.Schema(
   {
     platform: {
       type: String,
-      enum: ["Instagram", "LinkedIn", "X"],
+      enum: ["Instagram", "Facebook", "LinkedIn", "Twitter / X"],
       required: true,
     },
 
