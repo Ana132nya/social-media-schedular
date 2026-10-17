@@ -64,6 +64,27 @@ export async function updatePost(id, updates) {
   return normalizePost(result.post);
 }
 
+export async function uploadImage(file) {
+  const formData = new FormData();
+  formData.append("image", file);
+
+  const response = await fetch("/api/upload", {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const error = new Error(payload?.message || "Failed to upload image.");
+    error.status = response.status;
+    throw error;
+  }
+
+  return payload;
+}
+
 export function getOfflineState() {
   try {
     const saved = JSON.parse(localStorage.getItem(LOCAL_POSTS_KEY) || "null");

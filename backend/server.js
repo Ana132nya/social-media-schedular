@@ -3,13 +3,17 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
 
+const path = require("node:path");
 const { requireAuth } = require("./auth");
 const authRoutes = require("./routes/authRoutes");
 const postRoutes = require("./routes/postRoutes");
+const uploadRoutes = require("./routes/uploadRoutes");
 const scheduler = require("./scheduler");
 
 const app = express();
 const port = Number(process.env.PORT) || 5000;
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use(cors({
   origin: process.env.WEB_ORIGIN
@@ -27,6 +31,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/posts", requireAuth, postRoutes);
+app.use("/api/upload", requireAuth, uploadRoutes);
 
 async function startServer() {
   const mongoUri = process.env.MONGO_URI?.trim();
