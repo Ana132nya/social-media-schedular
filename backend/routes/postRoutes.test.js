@@ -184,3 +184,57 @@ test("returns the existing post for a repeated client ID", async () => {
     Post.findOne = originalFindOne;
   }
 });
+
+test("returns 400 when updating with an invalid post ID", async () => {
+  const response = await fetch(`${baseUrl}/api/posts/not-an-object-id`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Cookie: sessionCookie },
+    body: JSON.stringify({ caption: "Updated caption" }),
+  });
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { message: "Post ID is invalid" });
+});
+
+test("returns 404 when updating a non-existent post", async () => {
+  const originalFindByIdAndUpdate = Post.findByIdAndUpdate;
+  Post.findByIdAndUpdate = async () => null;
+
+  try {
+    const response = await fetch(`${baseUrl}/api/posts/507f1f77bcf86cd799439011`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Cookie: sessionCookie },
+      body: JSON.stringify({ caption: "Updated caption" }),
+    });
+
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), { message: "Post not found" });
+  } finally {
+    Post.findByIdAndUpdate = originalFindByIdAndUpdate;
+  }
+});
+
+test("updates post successfully with valid data", async () => {
+  const originalFindByIdAndUpdate = Post.findByIdAndUpdate;
+  const updatedMock = {
+    _id: "507f1f77bcf86cd799439011",
+    caption: "Updated caption",
+    status: "Published",
+  };
+  Post.findByIdAndUpdate = async () => updatedMock;
+
+  try {
+    const response = await fetch(`${baseUrl}/api/posts/507f1f77bcf86cd799439011`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Cookie: sessionCookie },
+      body: JSON.stringify({ caption: "Updated caption", status: "Published" }),
+    });
+
+    assert.equal(response.status, 200);
+    const json = await response.json();
+    assert.equal(json.message, "Post updated successfully");
+    assert.equal(json.post.caption, "Updated caption");
+  } finally {
+    Post.findByIdAndUpdate = originalFindByIdAndUpdate;
+  }
+});

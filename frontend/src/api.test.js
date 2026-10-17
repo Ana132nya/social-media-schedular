@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { getOfflineState, saveOfflineState, synchronizeOfflinePosts } from "./api.js";
+import { getOfflineState, saveOfflineState, synchronizeOfflinePosts, updatePost } from "./api.js";
 
 function installStorage() {
   const data = new Map();
@@ -112,5 +112,23 @@ test("does not treat expired authentication as an offline retry", async () => {
     globalThis.fetch = previousFetch;
     if (previousStorage === undefined) delete globalThis.localStorage;
     else globalThis.localStorage = previousStorage;
+  }
+});
+
+test("updatePost sends PUT request and returns normalized post", async () => {
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options = {}) => {
+    assert.equal(url, "/api/posts/507f1f77bcf86cd799439011");
+    assert.equal(options.method, "PUT");
+    assert.equal(JSON.parse(options.body).caption, "Updated caption");
+    return jsonResponse({ post: { _id: "507f1f77bcf86cd799439011", caption: "Updated caption" } });
+  };
+
+  try {
+    const updated = await updatePost("507f1f77bcf86cd799439011", { caption: "Updated caption" });
+    assert.equal(updated.id, "507f1f77bcf86cd799439011");
+    assert.equal(updated.caption, "Updated caption");
+  } finally {
+    globalThis.fetch = previousFetch;
   }
 });

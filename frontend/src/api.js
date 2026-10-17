@@ -55,6 +55,15 @@ export async function deletePost(id) {
   await request(`/api/posts/${id}`, { method: "DELETE" });
 }
 
+export async function updatePost(id, updates) {
+  const result = await request(`/api/posts/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(updates),
+  });
+
+  return normalizePost(result.post);
+}
+
 export function getOfflineState() {
   try {
     const saved = JSON.parse(localStorage.getItem(LOCAL_POSTS_KEY) || "null");

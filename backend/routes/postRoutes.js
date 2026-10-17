@@ -33,7 +33,7 @@ function sendPostError(res, error, operation) {
 // Create / Schedule Post
 router.post("/", async (req, res) => {
   try {
-    const { clientId, platform, caption, image, date, time, timezoneOffsetMinutes } = req.body || {};
+    const { clientId, platform, caption, image, date, time, timezoneOffsetMinutes, firstComment } = req.body || {};
 
     if (typeof caption !== "string" || !caption.trim() || !date || !time) {
       return res.status(400).json({
@@ -79,6 +79,7 @@ router.post("/", async (req, res) => {
       date,
       time,
       timezoneOffsetMinutes,
+      firstComment: typeof firstComment === "string" ? firstComment.trim() : "",
       status: "Scheduled",
     });
 
@@ -109,6 +110,43 @@ router.get("/", async (req, res) => {
     res.status(200).json(posts);
   } catch (error) {
     sendPostError(res, error, "Fetch posts");
+  }
+});
+
+// Update Post (reschedule, edit caption, change status)
+router.put("/:id", async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(400).json({ message: "Post ID is invalid" });
+  }
+
+  try {
+    const { caption, date, time, status, image, firstComment, timezoneOffsetMinutes } = req.body || {};
+    const updates = {};
+
+    if (typeof caption === "string" && caption.trim()) updates.caption = caption.trim();
+    if (typeof image === "string") updates.image = image.trim();
+    if (typeof firstComment === "string") updates.firstComment = firstComment.trim();
+    if (date && isValidDate(date)) updates.date = date;
+    if (time && /^([01]\d|2[0-3]):[0-5]\d$/.test(time)) updates.time = time;
+    if (Number.isInteger(timezoneOffsetMinutes) && Math.abs(timezoneOffsetMinutes) <= 840) {
+      updates.timezoneOffsetMinutes = timezoneOffsetMinutes;
+    }
+    if (status && Post.schema.path("status").enumValues.includes(status)) {
+      updates.status = status;
+    }
+
+    const post = await Post.findByIdAndUpdate(req.params.id, updates, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    res.status(200).json({ message: "Post updated successfully", post });
+  } catch (error) {
+    sendPostError(res, error, "Update post");
   }
 });
 

@@ -5,6 +5,7 @@ import CreatePost from "./CreatePost";
 import {
   createPost,
   deletePost,
+  updatePost,
   getOfflineState,
   getSession,
   hasSessionHint,
@@ -79,10 +80,20 @@ function Dashboard({ posts, onCreatePost, onViewPosts }) {
   );
 }
 
-function Posts({ posts, onDelete }) {
+function Posts({ posts, onDelete, onUpdate }) {
   const [filter, setFilter] = useState("All posts");
+  const [platformFilter, setPlatformFilter] = useState("All platforms");
+  const [searchQuery, setSearchQuery] = useState("");
+
   const filteredPosts = [...posts]
-    .filter((post) => filter === "All posts" || getPostStatus(post) === filter)
+    .filter((post) => {
+      const matchesStatus = filter === "All posts" || getPostStatus(post) === filter;
+      const matchesPlatform = platformFilter === "All platforms" || post.platform === platformFilter;
+      const matchesSearch = !searchQuery.trim() ||
+        post.caption.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        post.platform.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesStatus && matchesPlatform && matchesSearch;
+    })
     .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
 
   return (
@@ -90,11 +101,35 @@ function Posts({ posts, onDelete }) {
       <header className="posts-header">
         <div>
           <h1>Posts</h1>
-          <p className="page-subtitle">Review and manage your content schedule.</p>
+          <p className="page-subtitle">Review, search, and manage your scheduled social content.</p>
         </div>
-        <label className="filter-control">
-          <span className="visually-hidden">Filter posts</span>
-          <select value={filter} onChange={(event) => setFilter(event.target.value)}>
+
+        <div className="posts-filter-bar">
+          <input
+            type="search"
+            className="posts-search-input"
+            placeholder="Search captions or platforms..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+
+          <select
+            className="posts-filter-select"
+            value={platformFilter}
+            onChange={(e) => setPlatformFilter(e.target.value)}
+          >
+            <option>All platforms</option>
+            <option>Instagram</option>
+            <option>LinkedIn</option>
+            <option>Twitter / X</option>
+            <option>Facebook</option>
+          </select>
+
+          <select
+            className="posts-filter-select"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+          >
             <option>All posts</option>
             <option>Scheduled</option>
             <option>Due</option>
@@ -102,29 +137,85 @@ function Posts({ posts, onDelete }) {
             <option>Failed</option>
             <option>Cancelled</option>
           </select>
-        </label>
+        </div>
       </header>
+
       <section className="post-list" aria-live="polite">
-        {filteredPosts.length ? filteredPosts.map((post) => {
-          const status = getPostStatus(post);
-          return (
-            <article className="managed-post" key={post.id}>
-              {post.image && <img src={post.image} alt="" />}
-              <div className="managed-post-content">
-                <div className="managed-post-meta">
-                  <span className="platform-dot" style={{ background: PLATFORM_COLORS[post.platform] }} />
-                  <strong>{post.platform}</strong>
-                  <span>{formatPostDate(post)}</span>
-                  <span className={`status ${status.toLowerCase()}`}>{status}</span>
+        {filteredPosts.length ? (
+          filteredPosts.map((post) => {
+            const status = getPostStatus(post);
+            return (
+              <article className="managed-post" key={post.id}>
+                {post.image && <img src={post.image} alt="Post media" />}
+                <div className="managed-post-content">
+                  <div className="managed-post-meta">
+                    <span
+                      className="platform-dot"
+                      style={{ background: PLATFORM_COLORS[post.platform] }}
+                    />
+                    <strong>{post.platform}</strong>
+                    <span>{formatPostDate(post)}</span>
+                    <span className={`status ${status.toLowerCase()}`}>{status}</span>
+                  </div>
+                  <p>{post.caption}</p>
+
+                  {post.firstComment && (
+                    <div className="managed-post-comment">
+                      <span className="comment-badge-tiny">💬 First comment:</span> {post.firstComment}
+                    </div>
+                  )}
                 </div>
-                <p>{post.caption}</p>
-              </div>
-              <button className="delete-button" onClick={() => onDelete(post)} aria-label={`Delete post: ${post.caption}`}>
-                Delete
+
+                <div className="post-action-buttons">
+                  {status !== "Published" && (
+                    <button
+                      className="action-button publish-btn"
+                      onClick={() => onUpdate(post, { status: "Published" })}
+                      title="Mark post as published"
+                    >
+                      ✓ Mark Published
+                    </button>
+                  )}
+
+                  {status === "Scheduled" && (
+                    <button
+                      className="action-button cancel-btn"
+                      onClick={() => onUpdate(post, { status: "Cancelled" })}
+                      title="Cancel scheduled post"
+                    >
+                      ✕ Cancel
+                    </button>
+                  )}
+
+                  <button
+                    className="delete-button"
+                    onClick={() => onDelete(post)}
+                    aria-label={`Delete post: ${post.caption}`}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </article>
+            );
+          })
+        ) : (
+          <div className="empty-state-card">
+            <p className="empty-state">No posts match your current search or filters.</p>
+            {(searchQuery || filter !== "All posts" || platformFilter !== "All platforms") && (
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setFilter("All posts");
+                  setPlatformFilter("All platforms");
+                }}
+              >
+                Clear all filters
               </button>
-            </article>
-          );
-        }) : <p className="empty-state">No posts match this view.</p>}
+            )}
+          </div>
+        )}
       </section>
     </>
   );
@@ -327,15 +418,26 @@ function App() {
     return localPost;
   };
 
-  const handleSchedule = async (post) => {
-    post = { ...post, clientId: crypto.randomUUID() };
+  const handleSchedule = async (postOrPosts) => {
+    const rawItems = Array.isArray(postOrPosts) ? postOrPosts : [postOrPosts];
+    const items = rawItems.map((p) => ({
+      ...p,
+      clientId: p.clientId || crypto.randomUUID(),
+    }));
+
     if (storageMode === "server") {
+      const savedItems = [];
       try {
-        const savedPost = await createPost(post);
-        const updatedPosts = [...posts, savedPost];
-        const offlineState = getOfflineState();
-        saveOfflineState(updatedPosts, offlineState.pendingDeleteIds);
-        setPosts(updatedPosts);
+        for (const item of items) {
+          const saved = await createPost(item);
+          savedItems.push(saved);
+        }
+        setPosts((currentPosts) => {
+          const updated = [...currentPosts, ...savedItems];
+          const offlineState = getOfflineState();
+          saveOfflineState(updated, offlineState.pendingDeleteIds);
+          return updated;
+        });
       } catch (error) {
         if (error.status === 401) {
           setSessionHint(false);
@@ -347,14 +449,43 @@ function App() {
           setNotice(error.message);
           return;
         }
-        queueLocalPost(post);
+        for (const item of items) {
+          queueLocalPost(item);
+        }
         setNotice("Backend unavailable. This post is saved locally and will sync when reconnected.");
       }
     } else {
-      queueLocalPost(post);
+      for (const item of items) {
+        queueLocalPost(item);
+      }
       setNotice("This post is saved locally and will sync when reconnected.");
     }
-    showView("calendar", post.date);
+    if (items.length > 0) {
+      showView("calendar", items[0].date);
+    }
+  };
+
+  const handleUpdatePost = async (post, updates) => {
+    if (storageMode === "server") {
+      try {
+        const updatedPost = await updatePost(post.id, updates);
+        setPosts((current) => {
+          const updated = current.map((p) => (p.id === post.id ? updatedPost : p));
+          const offlineState = getOfflineState();
+          saveOfflineState(updated, offlineState.pendingDeleteIds);
+          return updated;
+        });
+      } catch (error) {
+        setNotice(error.message || "Failed to update post.");
+      }
+    } else {
+      setPosts((current) => {
+        const updated = current.map((p) => (p.id === post.id ? { ...p, ...updates } : p));
+        const offlineState = getOfflineState();
+        saveOfflineState(updated, offlineState.pendingDeleteIds);
+        return updated;
+      });
+    }
   };
 
   const handleDelete = async (post) => {
@@ -457,17 +588,19 @@ function App() {
           <CreatePost
             initialDate={focusDate ?? ""}
             onSchedule={handleSchedule}
+            posts={posts}
           />
         )}
 
         {view === "calendar" && (
           <Calendar
+            key={focusDate || "calendar"}
             posts={posts}
             initialDate={focusDate}
             onCreatePost={(date) => showView("create", date)}
           />
         )}
-        {view === "posts" && <Posts posts={posts} onDelete={handleDelete} />}
+        {view === "posts" && <Posts posts={posts} onDelete={handleDelete} onUpdate={handleUpdatePost} />}
       </main>
     </div>
   );
