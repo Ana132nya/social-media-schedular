@@ -196,6 +196,28 @@ test("returns 400 when updating with an invalid post ID", async () => {
   assert.deepEqual(await response.json(), { message: "Post ID is invalid" });
 });
 
+test("rejects invalid or incomplete post updates", async () => {
+  const target = "507f1f77bcf86cd799439011";
+  const cases = [
+    [{ caption: "   " }, "Caption must not be empty"],
+    [{ status: "Unknown" }, "Post status is not supported"],
+    [{ date: "2999-01-01" }, "Date or time is invalid"],
+    [{ date: "2000-01-01", time: "12:30", timezoneOffsetMinutes: 0 }, "Scheduled time must be in the future"],
+    [{ unexpected: true }, "Post data contains unsupported fields"],
+  ];
+
+  for (const [body, message] of cases) {
+    const response = await fetch(`${baseUrl}/api/posts/${target}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Cookie: sessionCookie },
+      body: JSON.stringify(body),
+    });
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { message });
+  }
+});
+
 test("returns 404 when updating a non-existent post", async () => {
   const originalFindByIdAndUpdate = Post.findByIdAndUpdate;
   Post.findByIdAndUpdate = async () => null;

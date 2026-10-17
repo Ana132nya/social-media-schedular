@@ -96,12 +96,29 @@ test("uploads image file successfully and serves it statically", async () => {
   // Test static file serving
   const staticResponse = await fetch(`${baseUrl}${data.url}`);
   assert.equal(staticResponse.status, 200);
+  assert.equal(staticResponse.headers.get("x-content-type-options"), "nosniff");
 });
 
 test("rejects non-image file uploads", async () => {
   const formData = new FormData();
   const file = new Blob(["malicious script or text"], { type: "text/plain" });
   formData.append("image", file, "evil.txt");
+
+  const response = await fetch(`${baseUrl}/api/upload`, {
+    method: "POST",
+    headers: { Cookie: sessionCookie },
+    body: formData,
+  });
+
+  assert.equal(response.status, 400);
+  const data = await response.json();
+  assert.match(data.message, /Only image files/i);
+});
+
+test("rejects SVG uploads", async () => {
+  const formData = new FormData();
+  const file = new Blob(["<svg xmlns=\"http://www.w3.org/2000/svg\"/>"], { type: "image/svg+xml" });
+  formData.append("image", file, "image.svg");
 
   const response = await fetch(`${baseUrl}/api/upload`, {
     method: "POST",

@@ -13,7 +13,11 @@ const scheduler = require("./scheduler");
 const app = express();
 const port = Number(process.env.PORT) || 5000;
 
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
+  setHeaders(res) {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+  },
+}));
 
 app.use(cors({
   origin: process.env.WEB_ORIGIN

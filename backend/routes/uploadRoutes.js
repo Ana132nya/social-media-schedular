@@ -6,6 +6,12 @@ const fs = require("node:fs");
 const router = express.Router();
 
 const UPLOADS_DIR = path.join(__dirname, "..", "uploads");
+const IMAGE_EXTENSIONS = {
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+  "image/gif": ".gif",
+};
 
 // Ensure uploads directory exists
 if (!fs.existsSync(UPLOADS_DIR)) {
@@ -19,26 +25,16 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const sanitizedExt = path.extname(file.originalname).toLowerCase() || ".png";
-    cb(null, `upload-${uniqueSuffix}${sanitizedExt}`);
+    cb(null, `upload-${uniqueSuffix}${IMAGE_EXTENSIONS[file.mimetype]}`);
   },
 });
 
 // File filter for image types only
 const fileFilter = (req, file, cb) => {
-  const allowedMimeTypes = [
-    "image/jpeg",
-    "image/jpg",
-    "image/png",
-    "image/webp",
-    "image/gif",
-    "image/svg+xml",
-  ];
-
-  if (allowedMimeTypes.includes(file.mimetype)) {
+  if (Object.hasOwn(IMAGE_EXTENSIONS, file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error("Only image files (JPG, PNG, WebP, GIF, SVG) are allowed"), false);
+    cb(new Error("Only image files (JPG, PNG, WebP, GIF) are allowed"), false);
   }
 };
 

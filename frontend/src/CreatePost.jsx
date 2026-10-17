@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { uploadImage } from "./api";
 import {
   HASHTAG_PRESETS,
@@ -9,6 +9,13 @@ import {
   getOptimalTimeSuggestions,
   toDateKey,
 } from "./posts";
+
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+]);
 
 function formatCaptionWithHashtags(text) {
   if (!text) return "";
@@ -37,8 +44,6 @@ function CreatePost({ initialDate = "", onSchedule, posts = [] }) {
   const [uploadError, setUploadError] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState("");
-  const fileInputRef = useRef(null);
-
   const [scheduleMode, setScheduleMode] = useState("smart_queue"); // "smart_queue" | "optimal_time" | "custom"
   const [date, setDate] = useState(initialDate || toDateKey(new Date()));
   const [time, setTime] = useState("09:30");
@@ -56,7 +61,7 @@ function CreatePost({ initialDate = "", onSchedule, posts = [] }) {
   const nextQueueSlot = useMemo(() => getNextQueueSlot(posts), [posts]);
 
   // Optimal timing suggestions (recalculate if day boundary crossed)
-  const optimalTimeSuggestions = useMemo(() => getOptimalTimeSuggestions(), [today]);
+  const optimalTimeSuggestions = getOptimalTimeSuggestions();
 
   // When scheduleMode changes, sync date and time
   const selectScheduleMode = (mode) => {
@@ -111,8 +116,8 @@ function CreatePost({ initialDate = "", onSchedule, posts = [] }) {
   const handleFileUpload = async (file) => {
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      setUploadError("Please upload an image file (PNG, JPG, WebP, GIF, or SVG).");
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      setUploadError("Please upload an image file (PNG, JPG, WebP, or GIF).");
       return;
     }
 
@@ -173,6 +178,11 @@ function CreatePost({ initialDate = "", onSchedule, posts = [] }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (isUploading) {
+      setError("Wait for the image upload to finish before scheduling.");
+      return;
+    }
 
     if (selectedPlatforms.length === 0) {
       setError("Please select at least one social media channel.");
@@ -435,27 +445,19 @@ function CreatePost({ initialDate = "", onSchedule, posts = [] }) {
             {mediaTab === "device" && (
               <div className="system-upload-container">
                 <input
+                  id="post-image-file"
                   type="file"
-                  ref={fileInputRef}
-                  style={{ display: "none" }}
-                  accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                  className="visually-hidden"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
                   onChange={handleFileInputChange}
                 />
 
-                <div
+                <label
+                  htmlFor="post-image-file"
                   className={`upload-dropzone ${isDragging ? "drag-active" : ""} ${isUploading ? "uploading" : ""}`}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
-                  onClick={() => !isUploading && fileInputRef.current?.click()}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      fileInputRef.current?.click();
-                    }
-                  }}
                 >
                   {isUploading ? (
                     <div className="upload-progress-state">
@@ -476,22 +478,13 @@ function CreatePost({ initialDate = "", onSchedule, posts = [] }) {
                           <strong>Choose an image</strong> or drag & drop here
                         </p>
                         <p className="upload-prompt-sub">
-                          JPEG, PNG, WebP, GIF, SVG (up to 10MB)
+                          JPEG, PNG, WebP, GIF (up to 10MB)
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        className="upload-action-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          fileInputRef.current?.click();
-                        }}
-                      >
-                        Browse Files
-                      </button>
+                      <span className="upload-action-btn">Browse Files</span>
                     </div>
                   )}
-                </div>
+                </label>
 
                 {uploadError && (
                   <div className="upload-error-alert">
@@ -682,7 +675,7 @@ function CreatePost({ initialDate = "", onSchedule, posts = [] }) {
               type="button"
               className="primary-schedule-button"
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isUploading}
             >
               {isSubmitting
                 ? "Scheduling..."
