@@ -47,8 +47,8 @@ function CreatePost({ initialDate = "", onSchedule, posts = [] }) {
   // Smart queue next available slot
   const nextQueueSlot = useMemo(() => getNextQueueSlot(posts), [posts]);
 
-  // Optimal timing suggestions
-  const optimalTimeSuggestions = useMemo(() => getOptimalTimeSuggestions(), []);
+  // Optimal timing suggestions (recalculate if day boundary crossed)
+  const optimalTimeSuggestions = useMemo(() => getOptimalTimeSuggestions(), [today]);
 
   // When scheduleMode changes, sync date and time
   const selectScheduleMode = (mode) => {

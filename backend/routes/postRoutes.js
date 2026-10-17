@@ -120,9 +120,15 @@ router.put("/:id", async (req, res) => {
   }
 
   try {
-    const { caption, date, time, status, image, firstComment, timezoneOffsetMinutes } = req.body || {};
+    const { platform, caption, date, time, status, image, firstComment, timezoneOffsetMinutes } = req.body || {};
     const updates = {};
 
+    if (platform) {
+      if (!Post.schema.path("platform").enumValues.includes(platform)) {
+        return res.status(400).json({ message: "Platform is not supported" });
+      }
+      updates.platform = platform;
+    }
     if (typeof caption === "string" && caption.trim()) updates.caption = caption.trim();
     if (typeof image === "string") updates.image = image.trim();
     if (typeof firstComment === "string") updates.firstComment = firstComment.trim();
