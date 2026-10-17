@@ -544,13 +544,221 @@ header button {
   box-shadow: 0 0 0 2px #2563eb;
 }
 
+/* Clear Media Link */
+.clear-media-link {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.clear-media-link:hover {
+  background: #fef2f2;
+}
+
+/* Media Source Tabs */
+.media-tabs-bar {
+  display: flex;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 10px;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.media-tab-btn {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.media-tab-btn:hover {
+  color: #0f172a;
+}
+
+.media-tab-btn.active {
+  background: #ffffff;
+  color: #2563eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* System Device Upload Dropzone */
+.system-upload-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.upload-dropzone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.upload-dropzone:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.upload-dropzone.drag-active {
+  border-color: #2563eb;
+  background: #dbeafe;
+  transform: scale(1.01);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.15);
+}
+
+.upload-dropzone.uploading {
+  cursor: default;
+  pointer-events: none;
+  background: #f8fafc;
+}
+
+.upload-idle-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.upload-icon-circle {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #e0e7ff;
+  color: #4f46e5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.upload-dropzone:hover .upload-icon-circle {
+  transform: translateY(-2px);
+}
+
+.upload-prompt-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.upload-prompt-main {
+  font-size: 13px;
+  color: #1e293b;
+  margin: 0;
+}
+
+.upload-prompt-main strong {
+  color: #2563eb;
+}
+
+.upload-prompt-sub {
+  font-size: 11px;
+  color: #64748b;
+  margin: 0;
+}
+
+.upload-action-btn {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.upload-action-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+/* Upload Progress State */
+.upload-progress-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.upload-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.upload-progress-text {
+  font-size: 13px;
+  color: #475569;
+  font-weight: 500;
+  margin: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Upload Error Alert */
+.upload-error-alert {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.url-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .active-media-preview {
-  margin-top: 10px;
+  margin-top: 12px;
   position: relative;
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid #e2e8f0;
-  max-height: 200px;
+  background: #0f172a;
 }
 
 .active-media-preview img {
@@ -560,18 +768,40 @@ header button {
   display: block;
 }
 
+.media-preview-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(4px);
+}
+
+.media-filename-tag {
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 75%;
+}
+
 .remove-media-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(239, 68, 68, 0.9);
   color: white;
   border: none;
   border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 12px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
   cursor: pointer;
   font: inherit;
+  transition: background 0.15s ease;
+}
+
+.remove-media-btn:hover {
+  background: #dc2626;
 }
 
 /* Schedule Engine */

@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { uploadImage } from "./api";
 import {
   HASHTAG_PRESETS,
   HOOK_PRESETS,
@@ -31,6 +32,13 @@ function CreatePost({ initialDate = "", onSchedule, posts = [] }) {
   const [firstComment, setFirstComment] = useState("");
   const [showFirstComment, setShowFirstComment] = useState(false);
   const [image, setImage] = useState("");
+  const [mediaTab, setMediaTab] = useState("device"); // "device" | "url" | "presets"
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState("");
+  const fileInputRef = useRef(null);
+
   const [scheduleMode, setScheduleMode] = useState("smart_queue"); // "smart_queue" | "optimal_time" | "custom"
   const [date, setDate] = useState(initialDate || toDateKey(new Date()));
   const [time, setTime] = useState("09:30");
@@ -98,6 +106,64 @@ function CreatePost({ initialDate = "", onSchedule, posts = [] }) {
 
   const insertHook = (hookText) => {
     setCaption((prev) => (prev ? `${hookText}\n\n${prev}` : hookText));
+  };
+
+  const handleFileUpload = async (file) => {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Please upload an image file (PNG, JPG, WebP, GIF, or SVG).");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError("Image file size exceeds the 10MB limit.");
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      setUploadError("");
+      const result = await uploadImage(file);
+      setImage(result.url);
+      setUploadedFileName(file.name);
+    } catch (err) {
+      setUploadError(err.message || "Failed to upload image from your device.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFileUpload(file);
+  };
+
+  const handleFileInputChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) handleFileUpload(file);
+    e.target.value = "";
+  };
+
+  const handleRemoveMedia = () => {
+    setImage("");
+    setUploadedFileName("");
+    setUploadError("");
   };
 
   const activePlatformInfo = PLATFORM_INFO[activePreviewPlatform] || PLATFORM_INFO.Instagram;
@@ -325,36 +391,159 @@ function CreatePost({ initialDate = "", onSchedule, posts = [] }) {
 
           {/* Media Attachments */}
           <section className="composer-section">
-            <label htmlFor="post-image" className="section-title">
-              Media Attachment (Image URL)
-            </label>
-            <input
-              id="post-image"
-              type="url"
-              className="composer-input"
-              placeholder="https://example.com/photo.jpg"
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-            />
-
-            <div className="stock-presets-container">
-              <span className="stock-label">Or choose a high-res demo visual:</span>
-              <div className="stock-presets-grid">
-                {STOCK_IMAGE_PRESETS.map((preset, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    className={`stock-thumbnail-btn ${image === preset.url ? "active" : ""}`}
-                    onClick={() => setImage(preset.url)}
-                    title={preset.title}
-                  >
-                    <img src={preset.url} alt={preset.title} />
-                    <span className="stock-name">{preset.title}</span>
-                  </button>
-                ))}
-              </div>
+            <div className="section-title-row">
+              <label className="section-title">
+                Media Attachment
+              </label>
+              {image && (
+                <button
+                  type="button"
+                  className="clear-media-link"
+                  onClick={handleRemoveMedia}
+                >
+                  ✕ Clear image
+                </button>
+              )}
             </div>
 
+            {/* Media Source Tabs */}
+            <div className="media-tabs-bar">
+              <button
+                type="button"
+                className={`media-tab-btn ${mediaTab === "device" ? "active" : ""}`}
+                onClick={() => setMediaTab("device")}
+              >
+                📁 Upload from Device
+              </button>
+              <button
+                type="button"
+                className={`media-tab-btn ${mediaTab === "url" ? "active" : ""}`}
+                onClick={() => setMediaTab("url")}
+              >
+                🔗 Image URL
+              </button>
+              <button
+                type="button"
+                className={`media-tab-btn ${mediaTab === "presets" ? "active" : ""}`}
+                onClick={() => setMediaTab("presets")}
+              >
+                🎨 Demo Visuals
+              </button>
+            </div>
+
+            {/* Tab 1: System Device Upload */}
+            {mediaTab === "device" && (
+              <div className="system-upload-container">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: "none" }}
+                  accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                  onChange={handleFileInputChange}
+                />
+
+                <div
+                  className={`upload-dropzone ${isDragging ? "drag-active" : ""} ${isUploading ? "uploading" : ""}`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => !isUploading && fileInputRef.current?.click()}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                >
+                  {isUploading ? (
+                    <div className="upload-progress-state">
+                      <div className="upload-spinner" />
+                      <p className="upload-progress-text">Uploading image from your device...</p>
+                    </div>
+                  ) : (
+                    <div className="upload-idle-state">
+                      <div className="upload-icon-circle">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="17 8 12 3 7 8" />
+                          <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                      </div>
+                      <div className="upload-prompt-content">
+                        <p className="upload-prompt-main">
+                          <strong>Choose an image</strong> or drag & drop here
+                        </p>
+                        <p className="upload-prompt-sub">
+                          JPEG, PNG, WebP, GIF, SVG (up to 10MB)
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="upload-action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fileInputRef.current?.click();
+                        }}
+                      >
+                        Browse Files
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {uploadError && (
+                  <div className="upload-error-alert">
+                    <span>⚠️ {uploadError}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab 2: URL */}
+            {mediaTab === "url" && (
+              <div className="url-input-container">
+                <input
+                  id="post-image"
+                  type="url"
+                  className="composer-input"
+                  placeholder="https://example.com/photo.jpg"
+                  value={image}
+                  onChange={(e) => {
+                    setImage(e.target.value);
+                    setUploadedFileName("");
+                  }}
+                />
+                <span className="field-hint">Paste any direct public image URL</span>
+              </div>
+            )}
+
+            {/* Tab 3: Presets */}
+            {mediaTab === "presets" && (
+              <div className="stock-presets-container">
+                <span className="stock-label">Or choose a high-res demo visual:</span>
+                <div className="stock-presets-grid">
+                  {STOCK_IMAGE_PRESETS.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className={`stock-thumbnail-btn ${image === preset.url ? "active" : ""}`}
+                      onClick={() => {
+                        setImage(preset.url);
+                        setUploadedFileName(preset.title);
+                      }}
+                      title={preset.title}
+                    >
+                      <img src={preset.url} alt={preset.title} />
+                      <span className="stock-name">{preset.title}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Active Media Preview Card */}
             {image && (
               <div className="active-media-preview">
                 <img
@@ -364,14 +553,19 @@ function CreatePost({ initialDate = "", onSchedule, posts = [] }) {
                     e.currentTarget.hidden = true;
                   }}
                 />
-                <button
-                  type="button"
-                  className="remove-media-btn"
-                  onClick={() => setImage("")}
-                  title="Remove image"
-                >
-                  ✕ Remove image
-                </button>
+                <div className="media-preview-bar">
+                  <span className="media-filename-tag">
+                    {uploadedFileName || (image.startsWith("/uploads/") ? "Uploaded Local Image" : image.length > 40 ? `${image.slice(0, 37)}...` : image)}
+                  </span>
+                  <button
+                    type="button"
+                    className="remove-media-btn"
+                    onClick={handleRemoveMedia}
+                    title="Remove image"
+                  >
+                    ✕ Remove
+                  </button>
+                </div>
               </div>
             )}
           </section>

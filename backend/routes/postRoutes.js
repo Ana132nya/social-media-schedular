@@ -142,7 +142,7 @@ router.put("/:id", async (req, res) => {
     }
 
     const post = await Post.findByIdAndUpdate(req.params.id, updates, {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     });
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { getOfflineState, saveOfflineState, synchronizeOfflinePosts, updatePost } from "./api.js";
+import { getOfflineState, saveOfflineState, synchronizeOfflinePosts, updatePost, uploadImage } from "./api.js";
 
 function installStorage() {
   const data = new Map();
@@ -132,3 +132,43 @@ test("updatePost sends PUT request and returns normalized post", async () => {
     globalThis.fetch = previousFetch;
   }
 });
+
+test("uploadImage sends multipart FormData and returns payload", async () => {
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options = {}) => {
+    assert.equal(url, "/api/upload");
+    assert.equal(options.method, "POST");
+    assert.equal(options.credentials, "include");
+    assert.equal(options.body instanceof FormData, true);
+    return jsonResponse({
+      message: "Image uploaded successfully",
+      url: "/uploads/upload-1234.png",
+      filename: "upload-1234.png",
+      size: 54321,
+    }, 201);
+  };
+
+  try {
+    const mockBlob = new Blob(["mock image data"], { type: "image/png" });
+    const result = await uploadImage(mockBlob);
+    assert.equal(result.url, "/uploads/upload-1234.png");
+    assert.equal(result.filename, "upload-1234.png");
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("uploadImage throws error when upload fails", async () => {
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async () => jsonResponse({ message: "File size exceeds 10MB limit" }, 400);
+
+  try {
+    const mockBlob = new Blob(["mock"], { type: "image/png" });
+    await assert.rejects(
+      uploadImage(mockBlob),
+      (err) => err.status === 400 && err.message === "File size exceeds 10MB limit"
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
