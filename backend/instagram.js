@@ -27,7 +27,7 @@ function encrypt(value) {
 
 function decrypt(value) {
   const [iv, tag, encrypted, extra] = String(value).split(".");
-  if (!iv || !tag || !encrypted || extra) throw new Error("Stored Instagram token is invalid");
+  if (!iv || !tag || !encrypted || extra) throw new Error("Stored account token is invalid");
   const decipher = crypto.createDecipheriv("aes-256-gcm", encryptionKey(), Buffer.from(iv, "base64url"));
   decipher.setAuthTag(Buffer.from(tag, "base64url"));
   return Buffer.concat([decipher.update(Buffer.from(encrypted, "base64url")), decipher.final()]).toString("utf8");

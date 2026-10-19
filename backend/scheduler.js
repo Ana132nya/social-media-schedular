@@ -1,5 +1,6 @@
 const Post = require("./models/Post");
 const { publishInstagramImage } = require("./instagram");
+const { publishLinkedInPost } = require("./linkedin");
 
 const POLL_INTERVAL_MS = 30_000; // Check every 30 seconds
 
@@ -35,6 +36,17 @@ async function publishDuePosts() {
             post.publishError = error.message.slice(0, 500);
             await post.save();
             console.error(`[Scheduler] Instagram post ${post._id} failed:`, error.message);
+            continue;
+          }
+        }
+        if (post.platform === "LinkedIn") {
+          try {
+            post.linkedInPostId = await publishLinkedInPost(post);
+          } catch (error) {
+            post.status = "Failed";
+            post.publishError = error.message.slice(0, 500);
+            await post.save();
+            console.error(`[Scheduler] LinkedIn post ${post._id} failed:`, error.message);
             continue;
           }
         }

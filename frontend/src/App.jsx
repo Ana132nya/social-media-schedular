@@ -4,12 +4,15 @@ import Calendar from "./Calendar";
 import CreatePost from "./CreatePost";
 import {
   connectInstagram,
+  connectLinkedIn,
   createPost,
   deletePost,
   disconnectInstagram,
+  disconnectLinkedIn,
   updatePost,
   getOfflineState,
   getInstagramStatus,
+  getLinkedInStatus,
   getSession,
   hasSessionHint,
   login as loginApi,
@@ -115,8 +118,42 @@ function InstagramSettings() {
         </div>
         {status?.connected ? <button className="disconnect-button" onClick={disconnect} disabled={busy}>{busy ? "Disconnecting…" : "Disconnect"}</button> : <button onClick={connectInstagram} disabled={!status?.configured}>Connect Instagram</button>}
       </section>
-      <p className="account-help">Use a Business or Creator account. Meta must be able to reach the image URL at the scheduled time.</p>
+      <LinkedInSettings />
+      <p className="account-help">Instagram uses a Business or Creator account, and Meta must be able to reach the image URL at the scheduled time.</p>
     </>
+  );
+}
+
+function LinkedInSettings() {
+  const [status, setStatus] = useState(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const refresh = () => getLinkedInStatus().then(setStatus).catch((requestError) => setError(requestError.message));
+
+  useEffect(() => { refresh(); }, []);
+
+  const disconnect = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await disconnectLinkedIn();
+      await refresh();
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="account-card">
+      <div>
+        <h2>LinkedIn</h2>
+        {!status ? <p>Checking LinkedIn connection…</p> : status.connected ? <p>Connected as <strong>{status.name}</strong>. Access expires {new Date(status.expiresAt).toLocaleDateString()}.</p> : status.configured ? <p>Connect your LinkedIn account to publish scheduled posts.</p> : <p>LinkedIn OAuth needs server configuration. Add the LinkedIn app credentials to <code>backend/.env</code>.</p>}
+        {error && <p className="account-error" role="alert">{error}</p>}
+      </div>
+      {status?.connected ? <button className="disconnect-button" onClick={disconnect} disabled={busy}>{busy ? "Disconnecting…" : "Disconnect"}</button> : <button onClick={connectLinkedIn} disabled={!status?.configured}>Connect LinkedIn</button>}
+    </section>
   );
 }
 
@@ -358,7 +395,7 @@ function App() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const message = params.get("instagram_connected") ? "Instagram account connected." : params.get("instagram_error");
+    const message = params.get("instagram_connected") ? "Instagram account connected." : params.get("linkedin_connected") ? "LinkedIn account connected." : params.get("instagram_error") || params.get("linkedin_error");
     if (message) {
       setNotice(message);
       window.history.replaceState({}, "", window.location.pathname);

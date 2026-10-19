@@ -55,6 +55,7 @@
   box-shadow: var(--shadow-sm);
 }
 .account-card h2 { margin: 0 0 8px; }
+.account-card + .account-card { margin-top: 16px; }
 .account-card p, .account-help { color: var(--text-muted); line-height: 1.55; }
 .account-error { color: #b91c1c !important; margin-top: 10px; }
 .account-card button { flex: 0 0 auto; padding: 10px 16px; }

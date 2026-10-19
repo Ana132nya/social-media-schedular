@@ -56,6 +56,8 @@ const postSchema = new mongoose.Schema(
 
     instagramMediaId: { type: String, default: "" },
 
+    linkedInPostId: { type: String, default: "" },
+
     publishError: { type: String, default: "" },
   },
   {

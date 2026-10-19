@@ -49,6 +49,18 @@ export function connectInstagram() {
   window.location.assign("/api/instagram/connect");
 }
 
+export function getLinkedInStatus() {
+  return request("/api/linkedin/status");
+}
+
+export function disconnectLinkedIn() {
+  return request("/api/linkedin/connection", { method: "DELETE" });
+}
+
+export function connectLinkedIn() {
+  window.location.assign("/api/linkedin/connect");
+}
+
 export async function getPosts() {
   const posts = await request("/api/posts");
   return posts.map(normalizePost);
