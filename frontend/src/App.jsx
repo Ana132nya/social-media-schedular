@@ -3,10 +3,13 @@ import "./App.css";
 import Calendar from "./Calendar";
 import CreatePost from "./CreatePost";
 import {
+  connectInstagram,
   createPost,
   deletePost,
+  disconnectInstagram,
   updatePost,
   getOfflineState,
+  getInstagramStatus,
   getSession,
   hasSessionHint,
   login as loginApi,
@@ -76,6 +79,43 @@ function Dashboard({ posts, onCreatePost, onViewPosts }) {
           );
         }) : <p className="empty-state">Your schedule is clear. Create a post to get started.</p>}
       </section>
+    </>
+  );
+}
+
+function InstagramSettings() {
+  const [status, setStatus] = useState(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const refresh = () => getInstagramStatus().then(setStatus).catch((requestError) => setError(requestError.message));
+
+  useEffect(() => { refresh(); }, []);
+
+  const disconnect = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await disconnectInstagram();
+      await refresh();
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <header><h1>Connected accounts</h1></header>
+      <section className="account-card">
+        <div>
+          <h2>Instagram</h2>
+          {!status ? <p>Checking Instagram connection…</p> : status.connected ? <p>Connected as <strong>@{status.username}</strong>. Access expires {new Date(status.expiresAt).toLocaleDateString()}.</p> : status.configured ? <p>Connect an Instagram Professional account to publish scheduled image posts.</p> : <p>Instagram OAuth needs server configuration. Add the Meta app credentials to <code>backend/.env</code>.</p>}
+          {error && <p className="account-error" role="alert">{error}</p>}
+        </div>
+        {status?.connected ? <button className="disconnect-button" onClick={disconnect} disabled={busy}>{busy ? "Disconnecting…" : "Disconnect"}</button> : <button onClick={connectInstagram} disabled={!status?.configured}>Connect Instagram</button>}
+      </section>
+      <p className="account-help">Use a Business or Creator account. Meta must be able to reach the image URL at the scheduled time.</p>
     </>
   );
 }
@@ -314,6 +354,15 @@ function App() {
     return () => {
       active = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const message = params.get("instagram_connected") ? "Instagram account connected." : params.get("instagram_error");
+    if (message) {
+      setNotice(message);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   }, []);
 
   useEffect(() => {
@@ -564,6 +613,9 @@ function App() {
           <button className={navClass("posts")} onClick={() => showView("posts")}>
             📝 Posts
           </button>
+          <button className={navClass("accounts")} onClick={() => showView("accounts")}>
+            Accounts
+          </button>
         </nav>
         <p className={`connection-state ${storageMode}`}>
           <span /> {storageMode === "server" ? "Connected to database" : storageMode === "loading" ? "Connecting..." : "Browser storage"}
@@ -601,6 +653,7 @@ function App() {
           />
         )}
         {view === "posts" && <Posts posts={posts} onDelete={handleDelete} onUpdate={handleUpdatePost} />}
+        {view === "accounts" && <InstagramSettings />}
       </main>
     </div>
   );

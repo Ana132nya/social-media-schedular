@@ -8,6 +8,7 @@ const { requireAuth } = require("./auth");
 const authRoutes = require("./routes/authRoutes");
 const postRoutes = require("./routes/postRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
+const instagramRoutes = require("./routes/instagramRoutes");
 const scheduler = require("./scheduler");
 
 const app = express();
@@ -36,6 +37,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/posts", requireAuth, postRoutes);
 app.use("/api/upload", requireAuth, uploadRoutes);
+app.use("/api/instagram", instagramRoutes);
 
 async function startServer() {
   const mongoUri = process.env.MONGO_URI?.trim();

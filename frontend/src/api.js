@@ -37,6 +37,18 @@ export function logout() {
   return request("/api/auth/logout", { method: "POST" });
 }
 
+export function getInstagramStatus() {
+  return request("/api/instagram/status");
+}
+
+export function disconnectInstagram() {
+  return request("/api/instagram/connection", { method: "DELETE" });
+}
+
+export function connectInstagram() {
+  window.location.assign("/api/instagram/connect");
+}
+
 export async function getPosts() {
   const posts = await request("/api/posts");
   return posts.map(normalizePost);

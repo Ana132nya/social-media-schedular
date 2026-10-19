@@ -53,6 +53,10 @@ const postSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+
+    instagramMediaId: { type: String, default: "" },
+
+    publishError: { type: String, default: "" },
   },
   {
     timestamps: true,

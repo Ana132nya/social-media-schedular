@@ -1,4 +1,5 @@
 const Post = require("./models/Post");
+const { publishInstagramImage } = require("./instagram");
 
 const POLL_INTERVAL_MS = 30_000; // Check every 30 seconds
 
@@ -26,8 +27,19 @@ async function publishDuePosts() {
         timezoneOffset * 60_000;
 
       if (publishAt <= now.getTime()) {
-        // TODO: Replace with actual API calls per platform (Phase 2).
+        if (post.platform === "Instagram") {
+          try {
+            post.instagramMediaId = await publishInstagramImage(post);
+          } catch (error) {
+            post.status = "Failed";
+            post.publishError = error.message.slice(0, 500);
+            await post.save();
+            console.error(`[Scheduler] Instagram post ${post._id} failed:`, error.message);
+            continue;
+          }
+        }
         post.status = "Published";
+        post.publishError = "";
         await post.save();
         console.log(
           `[Scheduler] Published post ${post._id} (${post.platform}) — "${post.caption.slice(0, 50)}…"`
